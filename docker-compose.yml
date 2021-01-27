@@ -1,0 +1,9 @@
+version: "2"
+services:
+  breadquest-server:
+    build: breadquest
+    restart: on-failure
+    volumes:
+      - ./breadquest/breadquest:/etc/breadquest/
+    ports:
+        - "2080:2626"
