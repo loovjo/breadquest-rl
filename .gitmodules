@@ -1,0 +1,3 @@
+[submodule "breadquest/breadquest"]
+	path = breadquest/breadquest
+	url = https://github.com/ostracod/breadquest/
