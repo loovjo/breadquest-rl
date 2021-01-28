@@ -12,6 +12,12 @@ VISION_SIZE = 5
 BREADQUEST_SERVER = "http://localhost:2080/"
 BREADQUEST_SERVER_WS = "ws://localhost:2080/"
 
+class Direction(Enum):
+    UP = 0
+    RIGHT = 1
+    DOWN = 2
+    LEFT = 3
+
 class TileType(Enum):
     AIR = 0
     WALL = 1
@@ -121,6 +127,7 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
             assert res["success"]
             for cmd in res["commandList"]:
                 if cmd["commandName"] == "setLocalPlayerInfo":
+                    self.entered = True
                     self.bread_count = cmd["breadCount"]
                 elif cmd["commandName"] == "setTiles":
                     self.world.clear()
@@ -131,6 +138,13 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
                         dx, dy = xi - center, yi - center
                         self.world[(dx, dy)] = t
 
+        async def walk(self, direction):
+            await self.ws.send(json.dumps(
+                [ { "commandName": "walk", "direction": direction.value } ]
+            ))
+            res = json.loads(await self.ws.recv())
+            assert res["success"]
+
     return LoggedInClient(None, None)
 
 async def main():
@@ -138,6 +152,9 @@ async def main():
         name = "apio-" + str(random.randrange(0, 10**10))
         async with register_user(sess, name, "aaa") as cl:
             print(cl)
+            await cl.update_world()
+            await cl.walk(Direction.UP)
+            await cl.walk(Direction.RIGHT)
             await cl.update_world()
             print(cl.world)
 
