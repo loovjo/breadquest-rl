@@ -1,3 +1,4 @@
+from enum import Enum
 import random
 import asyncio, aiohttp, websockets
 from urllib.parse import urlencode
@@ -11,15 +12,58 @@ VISION_SIZE = 5
 BREADQUEST_SERVER = "http://localhost:2080/"
 BREADQUEST_SERVER_WS = "ws://localhost:2080/"
 
+class TileType(Enum):
+    AIR = 0
+    WALL = 1
+    TRAIL = 2
+    MY_TRAIL = 3
+    INGREDIENT = 4
+    SPECIAL = 5
+
+    def get_category(id, my_color=-1):
+        if id == 128:
+            return TileType.AIR
+        elif 129 <= id < 129 + 8:
+            return TileType.WALL
+        elif 137 <= id < 137 + 8:
+            color = id - 137
+            if color == my_color:
+                return TileType.MY_TRAIL
+            else:
+                return TileType.TRAIL
+        elif 145 <= id <= 148:
+            return TileType.INGREDIENT
+        elif 149 <= id <= 150:
+            return TileType.SPECIAL
+        else:
+            # TODO: Handle symbols
+            return TileType.WALL
+
+    def get_symbol(self):
+        if self == TileType.AIR:
+            return '`'
+        if self == TileType.WALL:
+            return '#'
+        if self == TileType.TRAIL:
+            return '.'
+        if self == TileType.MY_TRAIL:
+            return ','
+        if self == TileType.INGREDIENT:
+            return '*'
+        if self == TileType.SPECIAL:
+            return '='
+
+
 class RegisterFailedException(Exception):
     pass
 
-def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=0):
+def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
     class LoggedInClient:
         def __init__(self, ws, sid):
             self.sid = sid
             self.ws = ws
             self.name = name
+            self.avatar = avatar
 
             self.entered = False
             self.world = {} # {(Δx, Δy): tileId}
@@ -104,7 +148,7 @@ async def main():
             for y in range(miny, maxy + 1):
                 for x in range(minx, maxx + 1):
                     if (x, y) in cl.world:
-                        print(GRADIENT[min(len(GRADIENT) - 1, 127 - cl.world[(x, y)])], end="")
+                        print(TileType.get_category(cl.world[(x, y)], cl.avatar).get_symbol(), end="")
                     else:
                         print(" ", end="")
                 print()
