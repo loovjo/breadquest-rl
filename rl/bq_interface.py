@@ -115,6 +115,8 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
             self.world = {} # {(Δx, Δy): tileId}
             self.bread_count = 0
             self.inventory = {} # {tile id: count}
+            self.steps_left = 0
+            self.pos = None
 
             self.vision_size = vision_size
 
@@ -122,7 +124,7 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
             return sum([
                 c * TileType.get_category(k, self.avatar).get_score()
                 for k, c in self.inventory.items()
-            ])
+            ]) + self.steps_left
 
         async def __aenter__(self):
             print("Registering user", name)
@@ -211,6 +213,12 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
                     self.world[rpos] = e_id
                 elif cmd["commandName"] == "setInventory":
                     self.inventory = {int(k): v for k, v in cmd["inventory"].items()}
+
+            if self.pos is not None:
+                dx = my_pos[0] - self.pos[0]
+                if dx < 0:
+                    self.steps_left += -dx
+            self.pos = my_pos
 
         async def perform_action(self, action):
             await self.ws.send(json.dumps(
