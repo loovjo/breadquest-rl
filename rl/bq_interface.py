@@ -57,8 +57,11 @@ class TileType(Enum):
     MY_TRAIL = 3
     INGREDIENT = 4
     SPECIAL = 5
+    ENEMY = 6
 
     def get_category(id, my_color=-1):
+        if id == -1:
+            return TileType.ENEMY
         if id == 128:
             return TileType.AIR
         elif 129 <= id < 129 + 8:
@@ -90,6 +93,8 @@ class TileType(Enum):
             return '*'
         if self == TileType.SPECIAL:
             return '='
+        if self == TileType.ENEMY:
+            return '&'
 
 
 class RegisterFailedException(Exception):
@@ -149,7 +154,8 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
 
         async def update_world(self):
             commands = \
-                [ { "commandName": "getTiles", "size": VISION_SIZE }
+                [ { "commandName": "assertPos", "pos": {"x": 0, "y": 0, }, }
+                , { "commandName": "getTiles", "size": VISION_SIZE }
                 , { "commandName": "getEntities" }
                 , { "commandName": "getInventoryChanges" }
                 ]
@@ -161,8 +167,11 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
 
             res = json.loads(await self.ws.recv())
             assert res["success"]
+            my_pos = (0, 0)
             for cmd in res["commandList"]:
-                if cmd["commandName"] == "setLocalPlayerInfo":
+                if cmd["commandName"] == "setLocalPlayerPos":
+                    my_pos = cmd["pos"]["x"], cmd["pos"]["y"]
+                elif cmd["commandName"] == "setLocalPlayerInfo":
                     self.entered = True
                     self.bread_count = cmd["breadCount"]
                 elif cmd["commandName"] == "setTiles":
@@ -173,6 +182,18 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
                         xi, yi = i % size, i // size
                         dx, dy = xi - center, yi - center
                         self.world[(dx, dy)] = t
+                elif cmd["commandName"] == "addEntity":
+                    if cmd["entityInfo"]["className"] == "Enemy":
+                        e_id = -1
+                    else:
+                        continue
+                    xy = cmd["entityInfo"]["pos"]
+                    rpos = xy["x"] - my_pos[0], xy["y"] - my_pos[1]
+                    if rpos[0] < -size / 2 or rpos[0] > size / 2:
+                        continue
+                    if rpos[1] < -size / 2 or rpos[1] > size / 2:
+                        continue
+                    self.world[rpos] = e_id
                 elif cmd["commandName"] == "setInventory":
                     self.inventory = {int(k): v for k, v in cmd["inventory"].items()}
 
