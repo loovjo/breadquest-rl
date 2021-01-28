@@ -1,20 +1,26 @@
+import os, time
 import random
+
 import asyncio, aiohttp
 from bq_interface import register_user, Action, TileType
-from network import RLModule
+from network import RLModule, device
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-N_INSTANCES = 16
+N_INSTANCES = 32
 
 FUTURE_DISCOUNT = 0.8
 
 V_SIZE = 5
 
-BATCH_SIZE = 8
+BATCH_SIZE = 24
+
+SAVE_DIR = "network"
+
+EPSILON = 1e-2
 
 class RLLearning:
     def __init__(self, radius):
@@ -39,6 +45,26 @@ class RLLearning:
             lr=0.1,
         )
 
+    def load_from_save(self, save_dir):
+        net_path = os.path.join(save_dir, "network.pth")
+        opt_path = os.path.join(save_dir, "opt.pth")
+        if os.path.isfile(net_path) and os.path.isfile(opt_path):
+            self.network.load_state_dict(torch.load(net_path, map_location=device))
+            self.opt.load_state_dict(torch.load(opt_path, map_location=device))
+            print("Loaded save!")
+        else:
+            print("No save data found :(")
+
+    def save(self, save_dir):
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+
+        net_path = os.path.join(save_dir, "network.pth")
+        opt_path = os.path.join(save_dir, "opt.pth")
+        torch.save(self.network.state_dict(), net_path)
+        torch.save(self.opt.state_dict(), opt_path)
+        print("Saved!")
+
     def get_input_from_client(self, client):
         cmap = torch.LongTensor(self.side_length, self.side_length)
 
@@ -54,6 +80,7 @@ class RLLearning:
     def choose_actions(self, state):
         rewards = self.network.run(state)
         dist = rewards.softmax(dim=1)
+        dist += EPSILON
         choices = torch.multinomial(dist, 1)[:, 0]
         return choices
 
@@ -85,39 +112,49 @@ class RLLearning:
 
         loss = self.crit(predicted, q_t)
         loss.backward()
+        print("Training on", state_t.size(0), "samples")
         print("Loss:".rjust(16), loss.item())
         print("Average q:".rjust(16), q_t.mean().item())
+        print("Average predicted q:".rjust(16), predicted.mean().item())
         print("Average reward:".rjust(16), reward_t.mean().item())
         self.opt.step()
 
 async def run(clients):
     learner = RLLearning(V_SIZE)
+    learner.load_from_save(SAVE_DIR)
 
-    while True:
-        await asyncio.gather(*[
-            cl.update_world()
-            for cl in clients
-        ])
-        scores = np.array([cl.get_score() for cl in clients])
-        inputs = torch.cat([
-            learner.get_input_from_client(cl).unsqueeze(0)
-            for cl in clients
-        ], dim=0)
-        actions = learner.choose_actions(inputs)
-        learner.observe(scores, inputs, actions)
+    last_save_time = time.time()
+    try:
+        while True:
+            await asyncio.gather(*[
+                cl.update_world()
+                for cl in clients
+            ])
+            scores = np.array([cl.get_score() for cl in clients])
+            inputs = torch.cat([
+                learner.get_input_from_client(cl).unsqueeze(0)
+                for cl in clients
+            ], dim=0)
+            actions = learner.choose_actions(inputs)
+            learner.observe(scores, inputs, actions)
 
-        await asyncio.gather(*[
-            cl.perform_action(Action(action.item()))
-            for action, cl in zip(actions, clients)
-        ])
-
+            await asyncio.gather(*[
+                cl.perform_action(Action(action.item()))
+                for action, cl in zip(actions, clients)
+            ])
+            if time.time() - last_save_time > 30:
+                learner.save(SAVE_DIR)
+                last_save_time = time.time()
+    except KeyboardInterrupt as e:
+        learner.save(SAVE_DIR)
 
 
 async def start_n_more_clients(clients, n):
     if n == 0:
         await run(clients)
     else:
-        async with aiohttp.ClientSession() as sess, register_user(V_SIZE, sess, f"aaapio-{n}", f"aaaaa") as cl:
+        async with aiohttp.ClientSession() as sess, \
+            register_user(V_SIZE, sess, f"smartboix-{n}", f"aaaaa", avatar=random.randrange(0, 8)) as cl:
             # await asyncio.sleep(0.2)
             await start_n_more_clients(clients + [cl], n - 1)
 
