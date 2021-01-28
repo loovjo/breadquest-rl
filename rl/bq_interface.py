@@ -114,11 +114,15 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
             self.inventory = {} # {tile id: count}
 
         async def __aenter__(self):
-            print("registering", name)
+            print("Registering user", name)
             reg_data = {"username": name, "password": pw, "email": email, "avatar": str(avatar)}
-            print(reg_data)
 
             res = await sess.post(BREADQUEST_SERVER + "createAccountAction", data=reg_data)
+            j = await res.json()
+            if j["success"]:
+                print("Registration of", name, "successful")
+            else:
+                print("Registration of", name, "failed")
 
             login_data = {"username": name, "password": pw}
 
@@ -126,12 +130,11 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
             j = await res.json()
             if j["success"]:
                 sid = res.cookies.get("connect.sid").value
-                print("reg sid", sid)
+                print("Logged in as", name, "successfully")
             else:
                 raise RegisterFailedException()
 
             cookies = {"Cookie": urlencode({"connect.sid": sid})}
-            print(cookies)
             if not (await res.json())["success"]:
                 print("oh no")
                 raise RegisterFailedException()
@@ -140,6 +143,7 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
                 BREADQUEST_SERVER_WS + "gameUpdate",
                 extra_headers={"Cookie": "connect.sid=" + sid},
             )
+            print("Connected", name, "to websocket")
 
             self.ws = ws
             self.sid = sid
