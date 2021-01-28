@@ -14,13 +14,15 @@ N_INSTANCES = 32
 
 FUTURE_DISCOUNT = 0.8
 
-V_SIZE = 5
+V_SIZE = 3
 
 BATCH_SIZE = 24
 
 SAVE_DIR = "network"
 
-EPSILON = 1e-2
+EPSILON = 1e-4
+
+CONF_BOOST = 2
 
 class RLLearning:
     def __init__(self, radius):
@@ -79,7 +81,7 @@ class RLLearning:
 
     def choose_actions(self, state):
         rewards = self.network.run(state)
-        dist = rewards.softmax(dim=1)
+        dist = (CONF_BOOST * rewards).softmax(dim=1)
         dist += EPSILON
         choices = torch.multinomial(dist, 1)[:, 0]
         return choices
