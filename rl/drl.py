@@ -1,6 +1,6 @@
 import random
 import asyncio, aiohttp
-from bq_interface import register_user, Direction
+from bq_interface import register_user, Action
 
 N_INSTANCES = 10
 
@@ -11,7 +11,7 @@ async def run(clients):
             for cl in clients
         ])
         await asyncio.gather(*[
-            cl.walk(random.choice([Direction.UP, Direction.LEFT, Direction.DOWN, Direction.RIGHT]))
+            cl.perform_action(random.choice(list(Action)))
             for cl in clients
         ])
 
@@ -20,7 +20,7 @@ async def start_n_more_clients(clients, n):
     if n == 0:
         await run(clients)
     else:
-        async with aiohttp.ClientSession() as sess, register_user(sess, f"aapio-{random.random()}", f"aaaaa-{n}") as cl:
+        async with aiohttp.ClientSession() as sess, register_user(sess, f"smartboi-{n}", f"aaaaa") as cl:
             # await asyncio.sleep(0.2)
             await start_n_more_clients(clients + [cl], n - 1)
 

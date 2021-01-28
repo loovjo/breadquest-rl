@@ -191,8 +191,8 @@ async def main():
         async with register_user(sess, name, "aaa") as cl:
             print(cl)
             await cl.update_world()
-            await cl.perform_action(Action.UP)
-            await cl.perform_action(Action.RIGHT)
+            await cl.perform_action(Action.WALK_UP)
+            await cl.perform_action(Action.WALK_RIGHT)
             await cl.update_world()
             print(cl.world)
 
