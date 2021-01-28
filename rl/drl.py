@@ -22,6 +22,13 @@ SAVE_DIR = "network"
 
 EPSILON = 0.1
 
+LOG = open("log.txt", "a")
+
+def log(*args, **kwargs):
+    print(*args, **kwargs, file=LOG, flush=True)
+
+log("---restart---")
+
 class RLLearning:
     def __init__(self, radius):
         self.radius = radius
@@ -51,9 +58,9 @@ class RLLearning:
         if os.path.isfile(net_path) and os.path.isfile(opt_path):
             self.network.load_state_dict(torch.load(net_path, map_location=device))
             self.opt.load_state_dict(torch.load(opt_path, map_location=device))
-            print("Loaded save!")
+            log("Loaded save!")
         else:
-            print("No save data found :(")
+            log("No save data found :(")
 
     def save(self, save_dir):
         if not os.path.isdir(save_dir):
@@ -63,7 +70,7 @@ class RLLearning:
         opt_path = os.path.join(save_dir, "opt.pth")
         torch.save(self.network.state_dict(), net_path)
         torch.save(self.opt.state_dict(), opt_path)
-        print("Saved!")
+        log("Saved!")
 
     def get_input_from_client(self, client):
         cmap = torch.LongTensor(self.side_length, self.side_length)
@@ -115,11 +122,11 @@ class RLLearning:
 
         loss = self.crit(predicted, q_t)
         loss.backward()
-        print("Training on", state_t.size(0), "samples")
-        print("Loss:".rjust(16), loss.item())
-        print("Average q:".rjust(16), q_t.mean().item())
-        print("Average predicted q:".rjust(16), predicted.mean().item())
-        print("Average reward:".rjust(16), reward_t.mean().item())
+        log("Training on", state_t.size(0), "samples")
+        log("Loss:".rjust(16), loss.item())
+        log("Average q:".rjust(16), q_t.mean().item())
+        log("Average predicted q:".rjust(16), predicted.mean().item())
+        log("Average reward:".rjust(16), reward_t.mean().item())
         self.opt.step()
 
 async def run(clients):

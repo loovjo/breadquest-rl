@@ -6,8 +6,10 @@ import json
 
 GRADIENT = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. "
 
-BREADQUEST_SERVER = "http://localhost:2080/"
-BREADQUEST_SERVER_WS = "ws://localhost:2080/"
+BREADQUEST_SERVER = "http://breadquest_server:2626/"
+BREADQUEST_SERVER_WS = "ws://breadquest_server:2626/"
+
+LOG_NETWORK = False
 
 class Action(Enum):
     WALK_UP = 0
@@ -127,15 +129,15 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
             ]) + self.steps_left
 
         async def __aenter__(self):
-            print("Registering user", name)
+            if LOG_NETWORK: print("Registering user", name)
             reg_data = {"username": name, "password": pw, "email": email, "avatar": str(avatar)}
 
             res = await sess.post(BREADQUEST_SERVER + "createAccountAction", data=reg_data)
             j = await res.json()
             if j["success"]:
-                print("Registration of", name, "successful")
+                if LOG_NETWORK: print("Registration of", name, "successful")
             else:
-                print("Registration of", name, "failed")
+                if LOG_NETWORK: print("Registration of", name, "failed")
 
             login_data = {"username": name, "password": pw}
 
@@ -143,20 +145,20 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
             j = await res.json()
             if j["success"]:
                 sid = res.cookies.get("connect.sid").value
-                print("Logged in as", name, "successfully")
+                if LOG_NETWORK: print("Logged in as", name, "successfully")
             else:
                 raise RegisterFailedException()
 
             cookies = {"Cookie": urlencode({"connect.sid": sid})}
             if not (await res.json())["success"]:
-                print("oh no")
+                if LOG_NETWORK: print("oh no")
                 raise RegisterFailedException()
 
             ws = await websockets.connect(
                 BREADQUEST_SERVER_WS + "gameUpdate",
                 extra_headers={"Cookie": "connect.sid=" + sid},
             )
-            print("Connected", name, "to websocket")
+            if LOG_NETWORK: print("Connected", name, "to websocket")
 
             self.ws = ws
             self.sid = sid
