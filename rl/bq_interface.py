@@ -77,6 +77,12 @@ class TileType(Enum):
             # TODO: Handle symbols
             return TileType.WALL
 
+    def get_score(self):
+        if self == TileType.WALL: return 1
+        if self == TileType.INGREDIENT: return 10
+        if self == TileType.SPECIAL: return 100
+        return 0
+
     def get_symbol(self):
         if self == TileType.AIR:
             return '`'
@@ -111,6 +117,12 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
             self.inventory = {} # {tile id: count}
 
             self.vision_size = vision_size
+
+        def get_score(self):
+            return sum([
+                c * TileType.get_category(k, self.avatar).get_score()
+                for k, c in self.inventory.items()
+            ])
 
         async def __aenter__(self):
             print("Registering user", name)
