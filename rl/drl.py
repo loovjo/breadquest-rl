@@ -20,9 +20,7 @@ BATCH_SIZE = 24
 
 SAVE_DIR = "network"
 
-EPSILON = 1e-4
-
-CONF_BOOST = 2
+EPSILON = 0.1
 
 class RLLearning:
     def __init__(self, radius):
@@ -81,9 +79,12 @@ class RLLearning:
 
     def choose_actions(self, state):
         rewards = self.network.run(state)
-        dist = (CONF_BOOST * rewards).softmax(dim=1)
-        dist += EPSILON
-        choices = torch.multinomial(dist, 1)[:, 0]
+        if random.random() < 0.2:
+            dist = (2 * rewards).softmax(dim=1)
+            dist += EPSILON
+            choices = torch.multinomial(dist, 1)[:, 0]
+        else:
+            choices = rewards.max(axis=1).indices
         return choices
 
     # All before action was performed
