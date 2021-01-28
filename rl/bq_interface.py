@@ -12,11 +12,43 @@ VISION_SIZE = 5
 BREADQUEST_SERVER = "http://localhost:2080/"
 BREADQUEST_SERVER_WS = "ws://localhost:2080/"
 
-class Direction(Enum):
-    UP = 0
-    RIGHT = 1
-    DOWN = 2
-    LEFT = 3
+class Action(Enum):
+    WALK_UP = 0
+    WALK_RIGHT = 1
+    WALK_DOWN = 2
+    WALK_LEFT = 3
+
+    BREAK_UP = 4
+    BREAK_RIGHT = 5
+    BREAK_DOWN = 6
+    BREAK_LEFT = 7
+
+    # TODO:
+    PLACE_UP = 8
+    PLACE_RIGHT = 9
+    PLACE_DOWN = 10
+    PLACE_LEFT = 11
+
+    EAT = 12
+
+    def get_cmd(self, client):
+        if Action.WALK_UP.value <= self.value <= Action.WALK_LEFT.value:
+            return [ { "commandName": "walk", "direction": self.value - Action.WALK_UP.value } ]
+        elif Action.BREAK_UP.value <= self.value <= Action.BREAK_LEFT.value:
+            return [ { "commandName": "removeTile", "direction": self.value - Action.BREAK_UP.value } ]
+        elif Action.PLACE_UP.value <= self.value <= Action.PLACE_LEFT.value:
+            for it in client.inventory.keys():
+                if client.inventory[it] > 0 and TileType.get_category(it) == TileType.WALL:
+                    return [{
+                        "commandName": "placeTile",
+                        "direction": self.value - Action.PLACE_UP.value,
+                        "tile": it,
+                    }]
+            return []
+        elif self == Action.EAT:
+            return [ { "commandName": "eatBread" } ]
+
+
 
 class TileType(Enum):
     AIR = 0
@@ -74,6 +106,7 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
             self.entered = False
             self.world = {} # {(Δx, Δy): tileId}
             self.bread_count = 0
+            self.inventory = {} # {tile id: count}
 
         async def __aenter__(self):
             print("registering", name)
@@ -109,9 +142,6 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
             return LoggedInClient(ws, sid)
 
         async def __aexit__(self, exc_type, exc, tb):
-            await self.ws.send(json.dumps(
-                [ { "commandName": "walk", "direction": direction.value } ]
-            ))
             await self.ws.close()
 
         def __str__(self):
@@ -143,10 +173,12 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
                         xi, yi = i % size, i // size
                         dx, dy = xi - center, yi - center
                         self.world[(dx, dy)] = t
+                elif cmd["commandName"] == "setInventory":
+                    self.inventory = {int(k): v for k, v in cmd["inventory"].items()}
 
-        async def walk(self, direction):
+        async def perform_action(self, action):
             await self.ws.send(json.dumps(
-                [ { "commandName": "walk", "direction": direction.value } ]
+                [ *action.get_cmd(self) ]
             ))
             res = json.loads(await self.ws.recv())
             assert res["success"]
@@ -159,8 +191,8 @@ async def main():
         async with register_user(sess, name, "aaa") as cl:
             print(cl)
             await cl.update_world()
-            await cl.walk(Direction.UP)
-            await cl.walk(Direction.RIGHT)
+            await cl.perform_action(Action.UP)
+            await cl.perform_action(Action.RIGHT)
             await cl.update_world()
             print(cl.world)
 
