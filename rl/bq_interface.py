@@ -158,7 +158,7 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
         async def update_world(self):
             commands = \
                 [ { "commandName": "assertPos", "pos": {"x": 0, "y": 0, }, }
-                , { "commandName": "getTiles", "size": self.vision_size }
+                , { "commandName": "getTiles", "size": self.vision_size*2+1 }
                 , { "commandName": "getEntities" }
                 , { "commandName": "getInventoryChanges" }
                 ]
@@ -186,15 +186,15 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
                         dx, dy = xi - center, yi - center
                         self.world[(dx, dy)] = t
                 elif cmd["commandName"] == "addEntity":
-                    if cmd["entityInfo"]["className"] == "Enemy":
+                    if cmd["entityInfo"]["className"] == "Player":
                         e_id = -1
                     else:
                         continue
                     xy = cmd["entityInfo"]["pos"]
                     rpos = xy["x"] - my_pos[0], xy["y"] - my_pos[1]
-                    if rpos[0] < -size / 2 or rpos[0] > size / 2:
+                    if rpos[0] < -self.vision_size or rpos[0] > self.vision_size:
                         continue
-                    if rpos[1] < -size / 2 or rpos[1] > size / 2:
+                    if rpos[1] < -self.vision_size or rpos[1] > self.vision_size:
                         continue
                     self.world[rpos] = e_id
                 elif cmd["commandName"] == "setInventory":
