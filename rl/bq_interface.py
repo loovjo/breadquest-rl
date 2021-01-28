@@ -6,9 +6,6 @@ import json
 
 GRADIENT = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. "
 
-
-VISION_SIZE = 5
-
 BREADQUEST_SERVER = "http://localhost:2080/"
 BREADQUEST_SERVER_WS = "ws://localhost:2080/"
 
@@ -100,7 +97,7 @@ class TileType(Enum):
 class RegisterFailedException(Exception):
     pass
 
-def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
+def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
     class LoggedInClient:
         def __init__(self, ws, sid):
             self.sid = sid
@@ -112,6 +109,8 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
             self.world = {} # {(Δx, Δy): tileId}
             self.bread_count = 0
             self.inventory = {} # {tile id: count}
+
+            self.vision_size = vision_size
 
         async def __aenter__(self):
             print("Registering user", name)
@@ -159,7 +158,7 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
         async def update_world(self):
             commands = \
                 [ { "commandName": "assertPos", "pos": {"x": 0, "y": 0, }, }
-                , { "commandName": "getTiles", "size": VISION_SIZE }
+                , { "commandName": "getTiles", "size": self.vision_size }
                 , { "commandName": "getEntities" }
                 , { "commandName": "getInventoryChanges" }
                 ]
@@ -213,7 +212,7 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
 async def main():
     async with aiohttp.ClientSession() as sess:
         name = "apio-" + str(random.randrange(0, 10**10))
-        async with register_user(sess, name, "aaa") as cl:
+        async with register_user(3, sess, name, "aaa") as cl:
             print(cl)
             await cl.update_world()
             await cl.perform_action(Action.WALK_UP)

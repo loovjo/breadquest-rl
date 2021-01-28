@@ -4,6 +4,8 @@ from bq_interface import register_user, Action
 
 N_INSTANCES = 10
 
+VISION_SIZE = 13
+
 async def run(clients):
     while True:
         await asyncio.gather(*[
@@ -20,7 +22,7 @@ async def start_n_more_clients(clients, n):
     if n == 0:
         await run(clients)
     else:
-        async with aiohttp.ClientSession() as sess, register_user(sess, f"smartboi-{n}", f"aaaaa") as cl:
+        async with aiohttp.ClientSession() as sess, register_user(VISION_SIZE, sess, f"aaapio-{n}", f"aaaaa") as cl:
             # await asyncio.sleep(0.2)
             await start_n_more_clients(clients + [cl], n - 1)
 
