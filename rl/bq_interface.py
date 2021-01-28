@@ -218,6 +218,8 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
                 dx = my_pos[0] - self.pos[0]
                 if dx < 0:
                     self.steps_left += -dx
+                if dx > 0:
+                    self.steps_left += -dx * 0.5
             self.pos = my_pos
 
         async def perform_action(self, action):
