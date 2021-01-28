@@ -76,21 +76,24 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
             self.bread_count = 0
 
         async def __aenter__(self):
+            print("registering", name)
             reg_data = {"username": name, "password": pw, "email": email, "avatar": str(avatar)}
+            print(reg_data)
 
             res = await sess.post(BREADQUEST_SERVER + "createAccountAction", data=reg_data)
-            if not (await res.json())["success"]:
-                print("oh no")
+
+            login_data = {"username": name, "password": pw}
+
+            res = await sess.post(BREADQUEST_SERVER + "loginAction", data=login_data)
+            j = await res.json()
+            if j["success"]:
+                sid = res.cookies.get("connect.sid").value
+                print("reg sid", sid)
+            else:
                 raise RegisterFailedException()
-            sid = res.cookies.get("connect.sid").value
 
             cookies = {"Cookie": urlencode({"connect.sid": sid})}
             print(cookies)
-
-            login_data = {"username": name, "password": pw}
-            res = await sess.post(BREADQUEST_SERVER + "loginAction", data=login_data, headers=cookies)
-            print(res)
-
             if not (await res.json())["success"]:
                 print("oh no")
                 raise RegisterFailedException()
@@ -106,6 +109,9 @@ def register_user(sess, name, pw, email="aaaa@aa.aa", avatar=7):
             return LoggedInClient(ws, sid)
 
         async def __aexit__(self, exc_type, exc, tb):
+            await self.ws.send(json.dumps(
+                [ { "commandName": "walk", "direction": direction.value } ]
+            ))
             await self.ws.close()
 
         def __str__(self):
