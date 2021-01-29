@@ -1,3 +1,5 @@
+import sys
+
 from enum import Enum
 import random
 import asyncio, aiohttp, websockets
@@ -8,6 +10,10 @@ GRADIENT = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^
 
 BREADQUEST_SERVER = "http://breadquest_server:2626/"
 BREADQUEST_SERVER_WS = "ws://breadquest_server:2626/"
+
+if "--localhost" in sys.argv:
+    BREADQUEST_SERVER = "http://0.0.0.0:2626/"
+    BREADQUEST_SERVER_WS = "ws://0.0.0.0:2626/"
 
 LOG_NETWORK = False
 
@@ -117,6 +123,7 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
             self.world = {} # {(Δx, Δy): tileId}
             self.bread_count = 0
             self.inventory = {} # {tile id: count}
+            self.health = 0
             self.steps_left = 0
             self.pos = None
 
@@ -177,6 +184,7 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
                 , { "commandName": "getTiles", "size": self.vision_size*2+1 }
                 , { "commandName": "getEntities" }
                 , { "commandName": "getInventoryChanges" }
+                , { "commandName": "getStats" }
                 ]
 
             if not self.entered:
@@ -215,6 +223,8 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
                     self.world[rpos] = e_id
                 elif cmd["commandName"] == "setInventory":
                     self.inventory = {int(k): v for k, v in cmd["inventory"].items()}
+                elif cmd["commandName"] == "setStats":
+                    self.health = cmd["health"]
 
             if self.pos is not None:
                 dx = my_pos[0] - self.pos[0]
