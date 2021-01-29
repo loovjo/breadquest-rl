@@ -124,7 +124,7 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
             self.bread_count = 0
             self.inventory = {} # {tile id: count}
             self.health = 0
-            self.steps_left = 0
+            self.extra_score = 0
             self.pos = None
 
             self.vision_size = vision_size
@@ -133,7 +133,7 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
             return sum([
                 c * TileType.get_category(k, self.avatar).get_score()
                 for k, c in self.inventory.items()
-            ]) + self.steps_left
+            ]) + self.extra_score
 
         async def __aenter__(self):
             if LOG_NETWORK: print("Registering user", name)
@@ -224,14 +224,13 @@ def register_user(vision_size, sess, name, pw, email="aaaa@aa.aa", avatar=7):
                 elif cmd["commandName"] == "setInventory":
                     self.inventory = {int(k): v for k, v in cmd["inventory"].items()}
                 elif cmd["commandName"] == "setStats":
+                    delta_health = cmd["health"] - self.health
+                    if delta_health == -1:
+                        self.extra_score -= 7
+                    if delta_health > 0:
+                        self.extra_score += 3
                     self.health = cmd["health"]
 
-            if self.pos is not None:
-                dx = my_pos[0] - self.pos[0]
-                if dx < 0:
-                    self.steps_left += -dx
-                if dx > 0:
-                    self.steps_left += -dx * 0.5
             self.pos = my_pos
 
         async def perform_action(self, action):
